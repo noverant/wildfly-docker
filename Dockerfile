@@ -8,7 +8,7 @@ ENV JBOSS_HOME /opt/jboss/wildfly
 
 USER root
 
-RUN apk update && apk add curl && rm -rf /var/cache/apk/*
+RUN apk update && apk add curl sed && rm -rf /var/cache/apk/*
 
 # Create a user and group used to launch processes
 # The user ID 1000 is the default for the first "regular" user on Fedora/RHEL,
@@ -31,6 +31,9 @@ RUN cd $HOME \
     && chown -R jboss:0 ${JBOSS_HOME} \
     && chmod -R g+rw ${JBOSS_HOME}
 
+# add kill trap for SIGTERM, which is how Docker shuts down
+RUN sed -i '/trap "kill -TERM $JBOSS_PID" TERM/a       trap "kill -TERM $JBOSS_PID" SIGTERM' $JBOSS_HOME/bin/standalone.sh
+
 # Ensure signals are forwarded to the JVM process correctly for graceful shutdown
 ENV LAUNCH_JBOSS_IN_BACKGROUND true
 
@@ -44,4 +47,4 @@ RUN chmod +x /launch.sh
 USER jboss
 
 # Run WildFly when the container boots
-CMD ["/bin/sh", "/launch.sh"]
+ENTRYPOINT ["/launch.sh"]
