@@ -1,0 +1,8 @@
+version: 1
+update_configs:
+  - package_manager: "maven"
+    directory: "/mariadb/"
+    update_schedule: "live"
+  - package_manager: "maven"
+    directory: "/mysql/"
+    update_schedule: "live"
