@@ -1,4 +1,4 @@
-FROM noverant/wildfly-docker:latest
+FROM noverant/wildfly:latest
 
 USER root
 
