@@ -4,7 +4,7 @@
   <artifactId>wildfly-docker</artifactId>
   <version>latest-mariadb</version>
   <properties>
-    <version.mariadb>2.4.3</version.mariadb>
+    <version.mariadb>2.4.4</version.mariadb>
   </properties>
   <dependencies>
     <dependency>
