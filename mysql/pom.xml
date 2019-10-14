@@ -4,7 +4,7 @@
   <artifactId>wildfly-docker</artifactId>
   <version>latest-mysql</version>
   <properties>
-    <version.mysql>8.0.17</version.mysql>
+    <version.mysql>8.0.18</version.mysql>
   </properties>
   <dependencies>
     <dependency>
