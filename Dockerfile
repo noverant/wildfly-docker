@@ -1,38 +1,47 @@
-FROM openjdk:13-alpine
+ARG WILDFLY_VERSION=18.0.0.Final
+ARG JBOSS_HOME=/opt/jboss/wildfly
+
+FROM alpine:3.10
 MAINTAINER Jonathan Putney <jputney@noverant.com>
 
-# Set the WILDFLY_VERSION env variable
-ENV WILDFLY_VERSION 18.0.0.Final
+ARG WILDFLY_VERSION
+ARG JBOSS_HOME
+
+ENV JBOSS_HOME=${JBOSS_HOME}
+ENV WILDFLY_VERSION=${WILDFLY_VERSION}
 ENV WILDFLY_SHA1 2d4778b14fda6257458a26943ea82988e3ae6a66
-ENV JBOSS_HOME /opt/jboss/wildfly
 
 USER root
 
-RUN apk update && apk add curl sed && rm -rf /var/cache/apk/*
+RUN apk --no-cache add curl && rm -rf /var/cache/apk/*
+
+RUN cd $HOME \
+    && addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss \
+    && curl -O https://download.jboss.org/wildfly/$WILDFLY_VERSION/wildfly-$WILDFLY_VERSION.tar.gz \
+    && sha1sum wildfly-$WILDFLY_VERSION.tar.gz | grep $WILDFLY_SHA1 \
+    && tar xf wildfly-$WILDFLY_VERSION.tar.gz \
+    && chown -R jboss:jboss wildfly-$WILDFLY_VERSION \
+    && chmod -R g+rw wildfly-$WILDFLY_VERSION
+
+FROM openjdk:13-alpine
+
+ARG WILDFLY_VERSION
+ARG JBOSS_HOME
+
+# Set the WILDFLY_VERSION env variable
+ENV WILDFLY_VERSION=${WILDFLY_VERSION}
+ENV JBOSS_HOME=${JBOSS_HOME}
+
+USER root
 
 # Create a user and group used to launch processes
 # The user ID 1000 is the default for the first "regular" user on Fedora/RHEL,
 # so there is a high chance that this ID will be equal to the current user
 # making it easier to use volumes (no permission issues)
-RUN addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss && \
-    chmod 755 /opt/jboss
+RUN addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss
 
-# Set the working directory to jboss' user home directory
-WORKDIR /opt/jboss
-
-# Add the WildFly distribution to /opt, and make wildfly the owner of the extracted tar content
-# Make sure the distribution is available from a well-known place
-RUN cd $HOME \
-    && curl -O https://download.jboss.org/wildfly/$WILDFLY_VERSION/wildfly-$WILDFLY_VERSION.tar.gz \
-    && sha1sum wildfly-$WILDFLY_VERSION.tar.gz | grep $WILDFLY_SHA1 \
-    && tar xf wildfly-$WILDFLY_VERSION.tar.gz \
-    && mv $HOME/wildfly-$WILDFLY_VERSION $JBOSS_HOME \
-    && rm wildfly-$WILDFLY_VERSION.tar.gz \
-    && chown -R jboss:0 ${JBOSS_HOME} \
-    && chmod -R g+rw ${JBOSS_HOME}
-
-# add kill trap for SIGTERM, which is how Docker shuts down
-RUN sed -i '/trap "kill -TERM $JBOSS_PID" TERM/a       trap "kill -TERM $JBOSS_PID" SIGTERM' $JBOSS_HOME/bin/standalone.sh
+# Add the WildFly distribution to $JBOSS_HOME
+COPY --from=0 /root/wildfly-$WILDFLY_VERSION $JBOSS_HOME
 
 # Ensure signals are forwarded to the JVM process correctly for graceful shutdown
 ENV LAUNCH_JBOSS_IN_BACKGROUND true

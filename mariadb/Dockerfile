@@ -1,10 +1,15 @@
-FROM noverant/wildfly:latest
+FROM maven:3.6
+
+ADD pom.xml /
 
 USER root
 
-RUN apk update && apk add maven && rm -rf /var/cache/apk/*
+# Download the JAR for the driver
+RUN MARIADB_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.mariadb -q -DforceStdout` && \
+      echo "=> Downloading MariaDB driver: $MARIADB_VERSION" && \
+      curl --location --output /mariadb-java-client.jar --url http://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/${MARIADB_VERSION}/mariadb-java-client-${MARIADB_VERSION}.jar
 
-ADD pom.xml /
+FROM noverant/wildfly:latest
 
 USER jboss
 
@@ -13,10 +18,7 @@ ENV JBOSS_MODE standalone
 ENV DEPLOYMENT_DIR $JBOSS_HOME/$JBOSS_MODE/deployments/
 ENV JBOSS_CONFIG standalone-full-ha.xml
 
-# Download the JAR for the driver
-RUN MARIADB_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.mariadb -q -DforceStdout` && \
-      echo "=> Downloading MariaDB driver: $MARIADB_VERSION" && \
-      curl --location --output mariadb-java-client.jar --url http://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/${MARIADB_VERSION}/mariadb-java-client-${MARIADB_VERSION}.jar
+COPY --from=0 /mariadb-java-client.jar /tmp/
 
 # Configure driver and add datasource
 RUN echo "=> Starting WildFly server" && \
@@ -26,7 +28,7 @@ RUN echo "=> Starting WildFly server" && \
     echo "=> Adding MariaDB module" && \
       $JBOSS_CLI --connect --command="module add \
         --name=org.mariadb \
-        --resources=mariadb-java-client.jar \
+        --resources=/tmp/mariadb-java-client.jar \
         --dependencies=javax.api,javax.transaction.api" && \
     echo "=> Adding MariaDB driver" && \
       $JBOSS_CLI --connect --command="/subsystem= \
@@ -39,12 +41,4 @@ RUN echo "=> Starting WildFly server" && \
     echo "=> Shutting down WildFly and Cleaning up" && \
       $JBOSS_CLI --connect --command=":shutdown" && \
       rm -rf $JBOSS_HOME/$JBOSS_MODE/configuration/*_xml_history/ $JBOSS_HOME/$JBOSS_MODE/log/* && \
-	    rm -f mariadb-java-client-* && \
-      rm -rf /opt/jboss/wildfly/$JBOSS_MODE/{data,log,tmp} && \
-      rm -rf /opt/jboss/.m2
-
-USER root
-
-RUN apk update && apk del maven curl sed && rm -rf /var/cache/apk/*
-
-USER jboss
+      rm -rf /opt/jboss/wildfly/$JBOSS_MODE/{data,log,tmp}
