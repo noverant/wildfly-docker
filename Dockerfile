@@ -1,7 +1,7 @@
 ARG WILDFLY_VERSION=18.0.0.Final
 ARG JBOSS_HOME=/opt/jboss/wildfly
 
-FROM alpine:3.10
+FROM appropriate/curl
 MAINTAINER Jonathan Putney <jputney@noverant.com>
 
 ARG WILDFLY_VERSION
@@ -12,8 +12,6 @@ ENV WILDFLY_VERSION=${WILDFLY_VERSION}
 ENV WILDFLY_SHA1 2d4778b14fda6257458a26943ea82988e3ae6a66
 
 USER root
-
-RUN apk --no-cache add curl && rm -rf /var/cache/apk/*
 
 RUN cd $HOME \
     && addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss \
