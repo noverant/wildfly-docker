@@ -18,7 +18,7 @@ ENV JBOSS_MODE standalone
 ENV DEPLOYMENT_DIR $JBOSS_HOME/$JBOSS_MODE/deployments/
 ENV JBOSS_CONFIG standalone-full-ha.xml
 
-COPY --from=0 /mariadb-java-client.jar /tmp/
+COPY --from=0 --chown=jboss:jboss /mariadb-java-client.jar /tmp/
 
 # Configure driver and add datasource
 RUN echo "=> Starting WildFly server" && \
@@ -41,4 +41,5 @@ RUN echo "=> Starting WildFly server" && \
     echo "=> Shutting down WildFly and Cleaning up" && \
       $JBOSS_CLI --connect --command=":shutdown" && \
       rm -rf $JBOSS_HOME/$JBOSS_MODE/configuration/*_xml_history/ $JBOSS_HOME/$JBOSS_MODE/log/* && \
-      rm -rf /opt/jboss/wildfly/$JBOSS_MODE/{data,log,tmp}
+      rm -rf /opt/jboss/wildfly/$JBOSS_MODE/{data,log,tmp} && \
+      rm -f /tmp/*.jar

@@ -17,9 +17,7 @@ RUN cd $HOME \
     && addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss \
     && curl -O https://download.jboss.org/wildfly/$WILDFLY_VERSION/wildfly-$WILDFLY_VERSION.tar.gz \
     && sha1sum wildfly-$WILDFLY_VERSION.tar.gz | grep $WILDFLY_SHA1 \
-    && tar xf wildfly-$WILDFLY_VERSION.tar.gz \
-    && chown -R jboss:jboss wildfly-$WILDFLY_VERSION \
-    && chmod -R g+rw wildfly-$WILDFLY_VERSION
+    && tar xf wildfly-$WILDFLY_VERSION.tar.gz
 
 FROM openjdk:13-alpine
 
@@ -39,7 +37,7 @@ USER root
 RUN addgroup -S jboss -g 1000 && adduser -u 1000 -S -G jboss -h /opt/jboss -s /sbin/nologin jboss
 
 # Add the WildFly distribution to $JBOSS_HOME
-COPY --from=0 /root/wildfly-$WILDFLY_VERSION $JBOSS_HOME
+COPY --from=0 --chown=jboss:jboss /root/wildfly-$WILDFLY_VERSION $JBOSS_HOME
 
 # Ensure signals are forwarded to the JVM process correctly for graceful shutdown
 ENV LAUNCH_JBOSS_IN_BACKGROUND true
