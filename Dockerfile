@@ -49,10 +49,10 @@ EXPOSE 8080
 ADD launch.sh /
 RUN chmod +x /launch.sh
 
-USER jboss
-
 # Run WildFly when the container boots
 RUN apk add --no-cache tini
+
+USER jboss
 
 # Tini is now available at /sbin/tini
 ENTRYPOINT ["/sbin/tini", "--"]
