@@ -1,4 +1,4 @@
-ARG WILDFLY_VERSION=18.0.0.Final
+ARG WILDFLY_VERSION=18.0.1.Final
 ARG JBOSS_HOME=/opt/jboss/wildfly
 
 FROM appropriate/curl
