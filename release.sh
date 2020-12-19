@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WILDFLY_RELEASE=19.1.0
+WILDFLY_RELEASE=21.0.2
 MARIADB_VERSION=`mvn -f mariadb/pom.xml help:evaluate -Dexpression=version.mariadb -q -DforceStdout`
 MYSQL_VERSION=`mvn -f mysql/pom.xml help:evaluate -Dexpression=version.mysql -q -DforceStdout`
 
