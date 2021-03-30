@@ -13,7 +13,7 @@ FROM noverant/wildfly:latest
 
 USER jboss
 
-ENV JBOSS_CLI $JBOSS_HOME/bin/jboss-cli.sh
+ENV JBOSS_CLI /bin/bash $JBOSS_HOME/bin/jboss-cli.sh
 ENV JBOSS_MODE standalone
 ENV DEPLOYMENT_DIR $JBOSS_HOME/$JBOSS_MODE/deployments/
 ENV JBOSS_CONFIG standalone-full-ha.xml
