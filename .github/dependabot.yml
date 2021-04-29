@@ -1,0 +1,23 @@
+version: 2
+updates:
+- package-ecosystem: maven
+  directory: "/mariadb"
+  schedule:
+    interval: daily
+    time: "10:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: org.mariadb.jdbc:mariadb-java-client
+    versions:
+    - 2.7.2
+- package-ecosystem: maven
+  directory: "/mysql"
+  schedule:
+    interval: daily
+    time: "10:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: mysql:mysql-connector-java
+    versions:
+    - 8.0.23
+    - 8.0.24
