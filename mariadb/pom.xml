@@ -5,12 +5,19 @@
   <version>latest-mariadb</version>
   <properties>
     <version.mariadb>2.7.2</version.mariadb>
+    <version.aws.sdk>1.12.8</version.aws.sdk>
   </properties>
   <dependencies>
     <dependency>
       <groupId>org.mariadb.jdbc</groupId>
       <artifactId>mariadb-java-client</artifactId>
       <version>${version.mariadb}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-rds</artifactId>
+      <version>${version.aws.sdk}</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

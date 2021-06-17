@@ -8,6 +8,10 @@ USER root
 RUN MARIADB_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.mariadb -q -DforceStdout` && \
       echo "=> Downloading MariaDB driver: $MARIADB_VERSION" && \
       curl --location --output /mariadb-java-client.jar --url http://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/${MARIADB_VERSION}/mariadb-java-client-${MARIADB_VERSION}.jar
+RUN AWS_SDK_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.aws.sdk -q -DforceStdout` && \
+      echo "=> Downloading AWS SDK jars: $AWS_SDK_VERSION" && \
+      curl --location --output /aws-sdk-rds.jar --url http://search.maven.org/remotecontent?filepath=com/amazonaws/aws-java-sdk-rds/${AWS_SDK_VERSION}/aws-java-sdk-rds-${AWS_SDK_VERSION}.jar && \
+      curl --location --output /aws-sdk-core.jar --url http://search.maven.org/remotecontent?filepath=com/amazonaws/aws-java-sdk-core/${AWS_SDK_VERSION}/aws-java-sdk-core-${AWS_SDK_VERSION}.jar
 
 FROM noverant/wildfly:latest
 
@@ -18,18 +22,26 @@ ENV JBOSS_MODE standalone
 ENV DEPLOYMENT_DIR $JBOSS_HOME/$JBOSS_MODE/deployments/
 ENV JBOSS_CONFIG standalone-full-ha.xml
 
-COPY --from=0 --chown=jboss:jboss /mariadb-java-client.jar /tmp/
+COPY --from=0 --chown=jboss:jboss /mariadb-java-client.jar /tmp/mariadb-java-client.jar
+COPY --from=0 --chown=jboss:jboss /aws-sdk-rds.jar /tmp/aws-sdk-rds.jar
+COPY --from=0 --chown=jboss:jboss /aws-sdk-core.jar /tmp/aws-sdk-core.jar
 
 # Configure driver and add datasource
 RUN echo "=> Starting WildFly server" && \
       sh -c '$JBOSS_HOME/bin/$JBOSS_MODE.sh -c $JBOSS_CONFIG --admin-only &' && \
     echo "=> Waiting for the server to boot" && \
       sh -c 'until `$JBOSS_CLI -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q running`; do echo `$JBOSS_CLI -c ":read-attribute(name=server-state)"`; sleep 1; done' && \
+    echo "=> Adding AWS RDS SDK" && \
+      $JBOSS_CLI --connect --command="module add \
+        --name=com.amazonaws \
+        --resource-delimiter=, \
+        --resources=/tmp/aws-sdk-core.jar,/tmp/aws-sdk-rds.jar \
+        --dependencies=javax.api,javax.xml.stream.api,javax.xml.bind.api,com.fasterxml.jackson,org.joda.time" && \
     echo "=> Adding MariaDB module" && \
       $JBOSS_CLI --connect --command="module add \
         --name=org.mariadb \
         --resources=/tmp/mariadb-java-client.jar \
-        --dependencies=javax.api,javax.transaction.api" && \
+        --dependencies=javax.api,javax.transaction.api,com.amazonaws" && \
     echo "=> Adding MariaDB driver" && \
       $JBOSS_CLI --connect --command="/subsystem= \
         datasources/jdbc-driver=mariadb:add( \
