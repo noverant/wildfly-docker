@@ -1,17 +1,19 @@
-FROM maven:3.6
+FROM maven:3.6-alpine as mvn
 
 ADD pom.xml /
 
 USER root
 
-# Download the JAR for the driver
-RUN MARIADB_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.mariadb -q -DforceStdout` && \
-      echo "=> Downloading MariaDB driver: $MARIADB_VERSION" && \
-      curl --location --output /mariadb-java-client.jar --url http://search.maven.org/remotecontent?filepath=org/mariadb/jdbc/mariadb-java-client/${MARIADB_VERSION}/mariadb-java-client-${MARIADB_VERSION}.jar
-RUN AWS_SDK_VERSION=`mvn -f /pom.xml help:evaluate -Dexpression=version.aws.sdk -q -DforceStdout` && \
-      echo "=> Downloading AWS SDK jars: $AWS_SDK_VERSION" && \
-      curl --location --output /aws-sdk-rds.jar --url http://search.maven.org/remotecontent?filepath=com/amazonaws/aws-java-sdk-rds/${AWS_SDK_VERSION}/aws-java-sdk-rds-${AWS_SDK_VERSION}.jar && \
-      curl --location --output /aws-sdk-core.jar --url http://search.maven.org/remotecontent?filepath=com/amazonaws/aws-java-sdk-core/${AWS_SDK_VERSION}/aws-java-sdk-core-${AWS_SDK_VERSION}.jar
+RUN mkdir /tmp/deps && \
+    mvn -f /pom.xml dependency:copy-dependencies -DoutputDirectory=/tmp/deps/ && \
+    cd /tmp/deps/ && \
+    mv mariadb-java-client* mariadb-java-client.jar && \
+    mv aws-java-sdk-core* aws-java-sdk-core.jar && \
+    mv aws-java-sdk-rds* aws-java-sdk-rds.jar && \
+    mv commons-logging* commons-logging.jar && \
+    mv httpclient* httpclient.jar && \
+    mv httpcore* httpcore.jar
+
 
 FROM noverant/wildfly:latest
 
@@ -22,9 +24,7 @@ ENV JBOSS_MODE standalone
 ENV DEPLOYMENT_DIR $JBOSS_HOME/$JBOSS_MODE/deployments/
 ENV JBOSS_CONFIG standalone-full-ha.xml
 
-COPY --from=0 --chown=jboss:jboss /mariadb-java-client.jar /tmp/mariadb-java-client.jar
-COPY --from=0 --chown=jboss:jboss /aws-sdk-rds.jar /tmp/aws-sdk-rds.jar
-COPY --from=0 --chown=jboss:jboss /aws-sdk-core.jar /tmp/aws-sdk-core.jar
+COPY --from=0 --chown=jboss:jboss /tmp/deps/ /tmp/deps/
 
 # Configure driver and add datasource
 RUN echo "=> Starting WildFly server" && \
@@ -35,12 +35,12 @@ RUN echo "=> Starting WildFly server" && \
       $JBOSS_CLI --connect --command="module add \
         --name=com.amazonaws \
         --resource-delimiter=, \
-        --resources=/tmp/aws-sdk-core.jar,/tmp/aws-sdk-rds.jar \
-        --dependencies=javax.api,javax.xml.stream.api,javax.xml.bind.api,com.fasterxml.jackson,org.joda.time" && \
+        --resources=/tmp/deps/aws-java-sdk-core.jar,/tmp/deps/aws-java-sdk-rds.jar,/tmp/deps/commons-logging.jar,/tmp/deps/httpclient.jar,/tmp/deps/httpcore.jar \
+        --dependencies=javax.api,javax.xml.stream.api,javax.xml.bind.api,com.fasterxml.jackson.core.jackson-core,com.fasterxml.jackson.core.jackson-databind,com.fasterxml.jackson.core.jackson-annotations,org.joda.time" && \
     echo "=> Adding MariaDB module" && \
       $JBOSS_CLI --connect --command="module add \
         --name=org.mariadb \
-        --resources=/tmp/mariadb-java-client.jar \
+        --resources=/tmp/deps/mariadb-java-client.jar \
         --dependencies=javax.api,javax.transaction.api,com.amazonaws" && \
     echo "=> Adding MariaDB driver" && \
       $JBOSS_CLI --connect --command="/subsystem= \
@@ -54,4 +54,4 @@ RUN echo "=> Starting WildFly server" && \
       $JBOSS_CLI --connect --command=":shutdown" && \
       rm -rf $JBOSS_HOME/$JBOSS_MODE/configuration/*_xml_history/ $JBOSS_HOME/$JBOSS_MODE/log/* && \
       rm -rf /opt/jboss/wildfly/$JBOSS_MODE/{data,log,tmp} && \
-      rm -f /tmp/*.jar
+      rm -rf /tmp/deps/
