@@ -5,7 +5,7 @@
   <version>latest-mariadb</version>
   <properties>
     <version.mariadb>2.7.3</version.mariadb>
-    <version.aws.sdk>1.12.12</version.aws.sdk>
+    <version.aws.sdk>1.12.14</version.aws.sdk>
   </properties>
   <dependencies>
     <dependency>
